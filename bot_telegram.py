@@ -1,5 +1,6 @@
 import os
 import json
+import difflib
 import gspread
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
@@ -20,8 +21,13 @@ def obtener_encabezados():
     return [h.strip() for h in datos[2]]
 
 
-def obtener_encabezados_lower():
-    return [h.strip().lower() for h in obtener_encabezados()]
+def obtener_productos():
+    encabezados = obtener_encabezados()
+    return [h.strip() for h in encabezados[2:]]  # desde fullcontrol hasta onedrop
+
+
+def obtener_productos_lower():
+    return [p.lower() for p in obtener_productos()]
 
 
 def obtener_depositos():
@@ -35,6 +41,22 @@ def obtener_depositos():
         depositos.append(deposito)
 
     return depositos
+
+
+def obtener_depositos_lower():
+    return [d.lower() for d in obtener_depositos()]
+
+
+def sugerir_opciones(texto, opciones, n=3, cutoff=0.5):
+    return difflib.get_close_matches(texto.lower(), [o.lower() for o in opciones], n=n, cutoff=cutoff)
+
+
+def es_saludo(texto):
+    saludos = [
+        "hola", "buen dia", "buen día", "buenas", "buenas tardes",
+        "buenas noches", "hey", "holi", "que tal", "qué tal"
+    ]
+    return texto.lower().strip() in saludos
 
 
 def buscar_producto(nombre_producto):
@@ -76,7 +98,7 @@ def buscar_deposito(nombre_deposito):
         if deposito.lower() == nombre_deposito:
             resultado = []
 
-            for i in range(2, len(encabezados)):
+            for i in range(2, len(encabezados)):  # incluye onedrop
                 producto = encabezados[i].strip()
                 stock = fila[i].strip()
                 resultado.append(f"• {producto}: {stock}")
@@ -113,10 +135,11 @@ def buscar_producto_en_deposito(nombre_producto, nombre_deposito):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje = (
         "Hola 👋\n\n"
-        "Escribime así:\n"
+        "Podés escribirme así:\n"
         "• harrier\n"
         "• crespo\n"
-        "• harrier crespo"
+        "• harrier crespo\n\n"
+        "También te sugiero opciones si escribís algo parecido."
     )
     await update.message.reply_text(mensaje)
 
@@ -127,8 +150,19 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if texto.startswith("/"):
         return
 
-    encabezados = obtener_encabezados_lower()[2:]
-    depositos = [d.lower() for d in obtener_depositos()]
+    productos = obtener_productos_lower()
+    depositos = obtener_depositos_lower()
+
+    if es_saludo(texto):
+        await update.message.reply_text(
+            "Hola 👋\n\n"
+            "¿Qué querés consultar?\n\n"
+            "Ejemplos:\n"
+            "• harrier\n"
+            "• crespo\n"
+            "• harrier crespo"
+        )
+        return
 
     palabras = texto.split()
 
@@ -136,7 +170,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     deposito = None
 
     for palabra in palabras:
-        if palabra in encabezados:
+        if palabra in productos:
             producto = palabra
         if palabra in depositos:
             deposito = palabra
@@ -151,7 +185,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     # Caso 2: solo producto
-    if texto in encabezados:
+    if texto in productos:
         resultado = buscar_producto(texto)
 
         if resultado:
@@ -168,9 +202,33 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(mensaje)
             return
 
-    await update.message.reply_text(
-        "No entendí.\n\nProbá con:\n• harrier\n• crespo\n• harrier crespo"
-    )
+    # Caso 4: sugerencias
+    sugerencias_producto = sugerir_opciones(texto, productos)
+    sugerencias_deposito = sugerir_opciones(texto, depositos)
+
+    mensaje = "No encontré eso.\n\n"
+
+    if sugerencias_producto:
+        mensaje += "¿Quisiste decir este producto?\n"
+        for s in sugerencias_producto:
+            mensaje += f"• {s}\n"
+        mensaje += "\n"
+
+    if sugerencias_deposito:
+        mensaje += "¿Quisiste decir este depósito?\n"
+        for s in sugerencias_deposito:
+            mensaje += f"• {s}\n"
+        mensaje += "\n"
+
+    if not sugerencias_producto and not sugerencias_deposito:
+        mensaje += (
+            "Probá con alguno de estos formatos:\n"
+            "• harrier\n"
+            "• crespo\n"
+            "• harrier crespo"
+        )
+
+    await update.message.reply_text(mensaje)
 
 
 def main():
