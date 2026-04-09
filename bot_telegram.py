@@ -76,7 +76,7 @@ def buscar_deposito(nombre_deposito):
         if deposito.lower() == nombre_deposito:
             resultado = []
 
-            for i in range(2, len(encabezados) - 1):
+            for i in range(2, len(encabezados)):
                 producto = encabezados[i].strip()
                 stock = fila[i].strip()
                 resultado.append(f"• {producto}: {stock}")
@@ -127,7 +127,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if texto.startswith("/"):
         return
 
-    encabezados = obtener_encabezados_lower()[2:-1]
+    encabezados = obtener_encabezados_lower()[2:]
     depositos = [d.lower() for d in obtener_depositos()]
 
     palabras = texto.split()
