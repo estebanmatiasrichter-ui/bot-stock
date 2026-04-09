@@ -4,7 +4,7 @@ import gspread
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-TOKEN = os.environ["TOKEN"]
+TOKEN = os.environ["BOT_TOKEN"]
 
 gc = gspread.service_account_from_dict(json.loads(os.environ["GOOGLE_CREDENTIALS"]))
 sh = gc.open("STOCK ONLINE X DEPOSITO ACTUAL 2026")
