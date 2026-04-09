@@ -1,10 +1,12 @@
+import os
+import json
 import gspread
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 
-TOKEN = "8605829704:AAGiEaugNUxkPuHoiwPR5M2UkrQKdd2yV98"
+TOKEN = os.environ["TOKEN"]
 
-gc = gspread.service_account(filename="credenciales.json")
+gc = gspread.service_account_from_dict(json.loads(os.environ["GOOGLE_CREDENTIALS"]))
 sh = gc.open("STOCK ONLINE X DEPOSITO ACTUAL 2026")
 ws = sh.worksheet("python")
 
