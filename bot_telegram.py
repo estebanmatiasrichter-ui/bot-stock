@@ -7,7 +7,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Con
 
 TOKEN = os.environ["BOT_TOKEN"]
 
-gc = gspread.service_account_from_dict(json.loads(os.environ["GOOGLE_CREDENTIALS"]))
+gc = gspread.service_account_from_dict(
+    json.loads(os.environ["GOOGLE_CREDENTIALS"])
+)
 sh = gc.open("STOCK ONLINE X DEPOSITO ACTUAL 2026")
 ws = sh.worksheet("python")
 
@@ -23,7 +25,7 @@ def obtener_encabezados():
 
 def obtener_productos():
     encabezados = obtener_encabezados()
-    return [h.strip() for h in encabezados[2:]]  # desde fullcontrol hasta onedrop
+    return [h.strip() for h in encabezados[2:]]
 
 
 def obtener_productos_lower():
@@ -47,16 +49,29 @@ def obtener_depositos_lower():
     return [d.lower() for d in obtener_depositos()]
 
 
-def sugerir_opciones(texto, opciones, n=3, cutoff=0.5):
-    return difflib.get_close_matches(texto.lower(), [o.lower() for o in opciones], n=n, cutoff=cutoff)
-
-
-def es_saludo(texto):
-    saludos = [
-        "hola", "buen dia", "buen día", "buenas", "buenas tardes",
-        "buenas noches", "hey", "holi", "que tal", "qué tal"
+def es_menu(texto):
+    opciones_menu = [
+        "hola",
+        "buen dia",
+        "buen día",
+        "buenas",
+        "buenas tardes",
+        "buenas noches",
+        "hey",
+        "holi",
+        "que tal",
+        "qué tal",
+        "stock",
+        "menu",
+        "menú",
+        "ayuda",
     ]
-    return texto.lower().strip() in saludos
+    return texto.lower().strip() in opciones_menu
+
+
+def sugerir_opciones(texto, opciones, n=3, cutoff=0.5):
+    opciones_lower = [o.lower() for o in opciones]
+    return difflib.get_close_matches(texto.lower(), opciones_lower, n=n, cutoff=cutoff)
 
 
 def buscar_producto(nombre_producto):
@@ -98,7 +113,7 @@ def buscar_deposito(nombre_deposito):
         if deposito.lower() == nombre_deposito:
             resultado = []
 
-            for i in range(2, len(encabezados)):  # incluye onedrop
+            for i in range(2, len(encabezados)):
                 producto = encabezados[i].strip()
                 stock = fila[i].strip()
                 resultado.append(f"• {producto}: {stock}")
@@ -135,11 +150,14 @@ def buscar_producto_en_deposito(nombre_producto, nombre_deposito):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje = (
         "Hola 👋\n\n"
-        "Podés escribirme así:\n"
+        "¿Qué querés consultar?\n\n"
+        "• Stock general\n"
+        "• Stock por depósito\n"
+        "• Stock por producto\n\n"
+        "Podés escribir directamente, por ejemplo:\n"
         "• harrier\n"
         "• crespo\n"
-        "• harrier crespo\n\n"
-        "También te sugiero opciones si escribís algo parecido."
+        "• harrier crespo"
     )
     await update.message.reply_text(mensaje)
 
@@ -153,11 +171,14 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     productos = obtener_productos_lower()
     depositos = obtener_depositos_lower()
 
-    if es_saludo(texto):
+    if es_menu(texto):
         await update.message.reply_text(
             "Hola 👋\n\n"
             "¿Qué querés consultar?\n\n"
-            "Ejemplos:\n"
+            "• Stock general\n"
+            "• Stock por depósito\n"
+            "• Stock por producto\n\n"
+            "Podés escribir directamente, por ejemplo:\n"
             "• harrier\n"
             "• crespo\n"
             "• harrier crespo"
