@@ -37,6 +37,59 @@ def obtener_depositos():
     return depositos
 
 
+def es_menu(texto):
+    opciones = ["hola", "stock", "menu", "menú", "ayuda"]
+    return texto.lower().strip() in opciones
+
+
+def es_stock_general(texto):
+    opciones = ["stock general", "general", "total", "resumen"]
+    return texto.lower().strip() in opciones
+
+
+def a_numero(valor):
+    valor = valor.strip().replace(",", "")
+    if valor == "":
+        return 0
+    try:
+        return int(valor)
+    except:
+        return 0
+
+
+def obtener_stock_general():
+    datos = obtener_datos()
+    encabezados = [h.strip() for h in datos[2]]
+
+    totales = {encabezados[i]: 0 for i in range(2, len(encabezados))}
+
+    for fila in datos[3:]:
+        deposito = fila[1].strip()
+
+        if deposito.lower() == "total stocks":
+            break
+
+        for i in range(2, len(encabezados)):
+            totales[encabezados[i]] += a_numero(fila[i])
+
+    return totales
+
+
+def formatear_stock_general():
+    totales = obtener_stock_general()
+
+    totales = {k: v for k, v in totales.items() if v > 0}
+    totales = dict(sorted(totales.items(), key=lambda x: x[1], reverse=True))
+
+    mensaje = "📊 STOCK GENERAL\n\n"
+
+    for producto, total in totales.items():
+        numero = f"{total:,}".replace(",", ".")
+        mensaje += f"• {producto.upper():<15} {numero}\n"
+
+    return mensaje
+
+
 def buscar_producto(nombre_producto):
     datos = obtener_datos()
     encabezados = [h.strip().lower() for h in datos[2]]
@@ -76,7 +129,6 @@ def buscar_deposito(nombre_deposito):
         if deposito.lower() == nombre_deposito:
             resultado = []
 
-            # 👇 ACA estaba el bug de onedrop (YA ARREGLADO)
             for i in range(2, len(encabezados)):
                 producto = encabezados[i].strip()
                 stock = fila[i].strip()
@@ -114,10 +166,15 @@ def buscar_producto_en_deposito(nombre_producto, nombre_deposito):
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje = (
         "Hola 👋\n\n"
-        "Podés consultar así:\n\n"
+        "¿Qué querés consultar?\n\n"
+        "1) Stock general\n"
+        "2) Stock por producto\n"
+        "3) Stock por depósito\n\n"
+        "Ejemplos:\n"
         "• harrier\n"
         "• crespo\n"
-        "• harrier crespo"
+        "• harrier crespo\n"
+        "• stock general"
     )
     await update.message.reply_text(mensaje)
 
@@ -128,9 +185,29 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if texto.startswith("/"):
         return
 
-    # 👇 ACA estaba el otro bug de onedrop (YA ARREGLADO)
     encabezados = obtener_encabezados_lower()[2:]
     depositos = [d.lower() for d in obtener_depositos()]
+
+    # MENÚ
+    if es_menu(texto):
+        await update.message.reply_text(
+            "Hola 👋\n\n"
+            "¿Qué querés consultar?\n\n"
+            "1) Stock general\n"
+            "2) Stock por producto\n"
+            "3) Stock por depósito\n\n"
+            "Ejemplos:\n"
+            "• harrier\n"
+            "• crespo\n"
+            "• harrier crespo\n"
+            "• stock general"
+        )
+        return
+
+    # STOCK GENERAL
+    if es_stock_general(texto):
+        await update.message.reply_text(formatear_stock_general())
+        return
 
     palabras = texto.split()
 
@@ -143,7 +220,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if palabra in depositos:
             deposito = palabra
 
-    # CASO 1: producto + deposito
+    # producto + deposito
     if producto and deposito:
         stock = buscar_producto_en_deposito(producto, deposito)
 
@@ -152,7 +229,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(mensaje)
             return
 
-    # CASO 2: solo producto
+    # solo producto
     if texto in encabezados:
         resultado = buscar_producto(texto)
 
@@ -161,7 +238,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(mensaje)
             return
 
-    # CASO 3: solo deposito
+    # solo deposito
     if texto in depositos:
         resultado = buscar_deposito(texto)
 
@@ -171,7 +248,7 @@ async def texto_libre(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
     await update.message.reply_text(
-        "No entendí.\n\nProbá con:\n• harrier\n• crespo\n• harrier crespo"
+        "No entendí.\n\nProbá con:\n• harrier\n• crespo\n• harrier crespo\n• stock general"
     )
 
 
