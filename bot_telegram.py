@@ -165,7 +165,7 @@ def buscar_producto_en_deposito(nombre_producto, nombre_deposito):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje = (
-        "Hola 👋\n\n"
+        "Hola nueva version 👋\n\n"
         "¿Qué querés consultar?\n\n"
         "1) Stock general\n"
         "2) Stock por producto\n"
